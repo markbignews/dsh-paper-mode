@@ -89,13 +89,15 @@ dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
 ├── references/
 │   ├── aigc_signals_zh.md         # 信号库 v2：判定与改写的唯一依据
 │   └── duplicate_check_zh.md      # 查重参考库：机制口径/报告指标/降重策略/与降 AI 率协同（估算非官方）
-├── scripts/                       # 六个脚本（python3 ≥3.8 标准库即可运行；swift 需 macOS）
+├── scripts/                       # 八个零依赖工具（python3 ≥3.8 标准库即可运行；swift 需 macOS）
 │   ├── ai_signal.py               # 信号扫描（.docx/.txt/.md/stdin）
 │   ├── office_extract.py          # docx/pptx/xlsx 统一提取
 │   ├── docx_extract.py            # docx 结构化原文提取
 │   ├── docx_write.py              # 定稿精确导出 .docx
 │   ├── pdf_to_text.py             # PDF 文字版提取（可选装 pypdf/pdftotext）
-│   └── pdf_to_images.swift        # PDF 逐页转 PNG（视觉版）
+│   ├── pdf_to_images.swift        # PDF 逐页转 PNG（视觉版）
+│   ├── faith_check.py             # 定稿保真机检（数字/编号/拉丁术语差异，终审前必跑）
+│   └── check_sync.py              # 三平台 SKILL 同源同步校验（CI/手动门禁）
 ├── samples/                       # 演示样例（sample_ai_style.txt / .docx）
 ├── docs/
 │   └── thesis_workflow_zh.md      # 闭环流程方法论
