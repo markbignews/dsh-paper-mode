@@ -53,6 +53,14 @@ ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 
 > 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。不要直接把仓库内容铺进扫描根目录（会因目录名 `dsh-paper-mode` 与 frontmatter `name: paper-mode` 不一致而被拒绝）。
 
+
+### Windows 用户说明
+
+- 安装命令与本文一致（PowerShell 中 `~` 指向 `%USERPROFILE%`）；若设置了 `$env:DSH_HOME`，把 `~/.dsh` 换成对应目录。
+- 技能正文中的命令按 macOS/Linux 书写，Windows 上把 `python3` 换成 `python`（或 `py -3`），并确保已安装 Python ≥3.8（`pip install pypdf` 可启用 PDF 文字版）。
+- `scripts/pdf_to_images.swift`（PDF 逐页转 PNG 视觉版）依赖 Swift/CoreGraphics，**仅 macOS**；Windows 下 PDF 处理走 `pdf_to_text.py` 文字版即可，公式/图表/扫描件请改用文字版加人工判读。
+- DSH 官方 skill-filesystem 与本文技能目录结构跨平台一致，无需改动任何文件。
+
 ### 发现根目录与优先级（DSH 官方表）
 
 | Rank | 来源 | 路径 |

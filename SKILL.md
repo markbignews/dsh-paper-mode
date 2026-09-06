@@ -119,6 +119,8 @@ metadata:
   `.dsh-uploads/<sessionId>/` 下，消息里以 `@相对路径` 引用；Agent 可优先用宿主提供的
   **`read_document` 工具**读取（PDF/DOCX/PPTX/XLSX/HTML/CSV 等自动转 Markdown，含图片 OCR，
   支持 offset/limit 分页），再结合本技能脚本判断；也可直接用本脚本提取文本。
+> **平台说明**：下文脚本命令按 macOS/Linux 的 `python3` 书写；**Windows 请改用 `python`（或 `py -3`）**，其余参数不变。DSH 本体、技能格式与所有 `.py` 脚本（纯标准库）在 Windows 无差异；仅两个平台点不同：① `pdf_to_images.swift` 依赖 Swift/CoreGraphics，**仅 macOS 可用**——Windows 的 PDF 一律走文字版 `pdf_to_text.py`（`pip install pypdf` 即可，或安装 poppler 提供 pdftotext），扫描件/公式图请让用户提供可读文本或图文说明；② 视觉模型读图（read_image）仍可用，只是没有本地 swift 转 PNG 管线。
+
 - **粘贴文本**：直接使用。长文让用户按章节或每 ≤800 字分批，或一次性给出后自行切块。
 - **Word / PPT / Excel**：统一用提取脚本（docx/pptx/xlsx 均支持，零依赖）：
   - `python3 scripts/office_extract.py <文件.docx|.pptx|.xlsx> [out.txt]`
