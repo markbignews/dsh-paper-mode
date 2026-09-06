@@ -4,6 +4,16 @@
 
 > 角色命名以 2.4.0 为最终口径（A 初审 → B 引述核查 → C 查重自查 → D AI 率检测 → E 改后终审）；历史版本中的字母编号仅用于追溯，不再沿用。
 
+## 2.5.1 — DSH 版附加：预设内代码行插件（三平台 SKILL 内容未变）
+
+> 本条目只落在 DSH 版仓库的交付层；**三份 SKILL.md 的 version 仍是 2.5.0 未随本条目改动**，`references/`/`docs/`/`scripts/` 三平台资产也未改动，check_sync 门禁不受影响。
+
+- 新增 `plugin/paper-tools.mjs`：一个**预设内代码行插件**（随论文模式 Agent 预设挂载，不装进 profile、无需重启宿主，新会话即生效）。
+- 作用：把 `scripts/` 下 8 个脚本封装成注册在工具目录里的原生模型工具——`paper_ai_signal` / `paper_office_extract` / `paper_docx_extract` / `paper_docx_write` / `paper_pdf_to_text` / `paper_pdf_to_images`（macOS/swift）/ `paper_faith_check` / `paper_check_sync`——带 JSON Schema 参数化调用，替代"手拼 python3 命令"。
+- 安全边界：工具执行统一经 `ctx.shell` + 会话站立沙箱策略（与 tool-bash 同机制），不绕开沙箱与审批；模块零 `@deepseek-ai` 依赖（只 import Node 内置模块），可整体复制分发。
+- 挂载：`agent.cordis.yml` 加一行 `- id: paper-tools` + `name: './plugin/paper-tools.mjs'`（相对预设目录解析），插件文件置于预设 `plugin/` 目录下（详见仓库 README「可选：装成论文模式预设并挂代码行插件」）。
+- 平台：Windows 自动取 `python` 解释器（可用 `config.pythonCmd` 覆盖）；`paper_pdf_to_images` 仅 macOS。
+
 ## 2.5.0 — 控制条款（迭代上限 / 终审返修上限 / 保真机检 / 官方实测回传节点 / 初审锚点与复核 / 例外记账）
 
 - **迭代上限**：每轮"改写→复查"定点迭代最多 3 次，第 4 轮起需用户逐轮明示"继续"，否则停在决策点（继续 / 接受现状并记账 / 调整目标或顺序）。
