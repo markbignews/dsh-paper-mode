@@ -40,6 +40,18 @@ ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 
 > 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。不要直接把仓库内容铺进扫描根目录（会因目录名 `dsh-paper-mode` 与 frontmatter `name: paper-mode` 不一致而被拒绝）。
 
+### 发现根目录与优先级（DSH 官方表）
+
+| Rank | 来源 | 路径 |
+|---|---|---|
+| 100 | 项目级 | `<projectRoot>/.dsh/skills` |
+| 200 | 项目级 | `<projectRoot>/.agents/skills` |
+| 300 | 自定义 | `Config.customSkillDirs` |
+| 400 | 用户级 | `<dshHome>/skills`（`dshHome` = `$DSH_HOME` 或 `~/.dsh`） |
+| 500 | 用户级 | `<agentsHome>/skills`（`agentsHome` = `$DSH_AGENTS_HOME` 或 `~/.agents`） |
+
+项目根目录 = 含 `.git` 的最近祖先目录。rank 越小越优先；默认推荐 rank 400（用户级），随项目分发装到 rank 100。SKILL.md 正文按资源基准目录解析相对路径，装在任何扫描根目录下均可直接使用。
+
 ## 更新 / 卸载 / 热刷新
 
 ```bash
