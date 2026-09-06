@@ -74,7 +74,8 @@ DSH 官方监视行为：`SKILL.md` 正文与 frontmatter 的修改在**下一�
 dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
 ├── SKILL.md                       # 技能正文（frontmatter: name/description/whenToUse/metadata + DSH 指令）
 ├── references/
-│   └── aigc_signals_zh.md         # 信号库 v2：判定与改写的唯一依据
+│   ├── aigc_signals_zh.md         # 信号库 v2：判定与改写的唯一依据
+│   └── duplicate_check_zh.md      # 查重参考库：机制口径/报告指标/降重策略/与降 AI 率协同（估算非官方）
 ├── scripts/                       # 六个脚本（python3 ≥3.8 标准库即可运行；swift 需 macOS）
 │   ├── ai_signal.py               # 信号扫描（.docx/.txt/.md/stdin）
 │   ├── office_extract.py          # docx/pptx/xlsx 统一提取
