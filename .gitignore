@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+
+# 本地测试产物
+out.txt
+outdir/
+*.log
