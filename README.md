@@ -12,6 +12,19 @@
 > 4. **仅适配 DeepSeek Harness**：本版正文依赖 DSH 运行机制（会话技能加载、`subagent` 子代理、会话工作区文件读写、`web_search`/`web_fetch`、可选的上传插件），仅在 DSH 上开发与测试，**未在其他 agent 工具上测试或验证过**。其他平台请用通用版（cn-thesis 仓库 `generic/paper-mode/`）。
 > 5. 安装/格式细节以 DeepSeek Harness 官方文档为准（见文末[官方依据](#官方依据)）。
 
+
+## 术语澄清：技能 / 插件 / 预设 / Harness（先读，避免误称）
+
+| 术语 | 含义 | 与本仓库的关系 |
+|---|---|---|
+| **DeepSeek Harness（dsh）** | 宿主运行框架：基于 Cordis 的进程/服务组合；本技能运行于其中 | 载体（harness），不是本仓库 |
+| **插件（plugin / bundle）** | 注册服务/事件/工具的可装载 Cordis 包（如 `dsh-file-upload`、`walioffice-dsh-plugin`，用 `dsh plugin --profile <name> add` 安装） | ❌ 本仓库不是插件，不注册任何服务/事件 |
+| **技能（skill）** | `SKILL.md` + 资源目录（references/scripts/samples）的资产；由 dsh 内的 `dsh-skill-filesystem` 插件按扫描根发现，模型按需加载正文 | ✅ **本仓库就是这个**（skill bundle；安装目录名须为 `paper-mode`） |
+| **Agent 预设（preset）** | `~/.dsh/.agent-presets/<id>/agent.cordis.yml`：一份按会话组装的 Cordis 组合（引用官方插件行 + persona + 捆绑技能目录） | ✅ 本机"论文模式"预设是用本技能组装的预设（属本机配置，不随本仓库发布） |
+| **脚本工具箱** | `scripts/` 下六个 python/swift 脚本 | 附带资产，可脱离任何宿主单独命令行使用 |
+
+一句话：**本仓库是 DeepSeek Harness 的一个技能包（skill bundle），不是"插件"；它跑在 dsh 这个 harness 里**；对 WorkBuddy / Codex / Claude Code 则是同一技能装进各自技能目录的本地版本。以往资料中"DSH 插件版本"的说法不准确，统一以"DSH 版技能包"为准。
+
 ## 功能
 
 | 模块 | 能力 | 入口 |

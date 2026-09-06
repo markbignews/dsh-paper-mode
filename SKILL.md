@@ -1,5 +1,6 @@
 ---
 name: paper-mode
+version: 2.4.0
 description: 论文模式：检测中文学术论文的 AIGC/AI 生成痕迹（按知网 CNKI AIGC 检测的语言特征估算 AI 率）与查重风险自查，给出逐段修改意见，并按用户确认的优先级迭代改写（默认先降 AIGC 率至 ≤10%，再按需降查重率）。支持粘贴文本及 Word(.docx)/PowerPoint(.pptx)/Excel(.xlsx)/PDF(.pdf) 文档。可调用 web 搜索核验引用、检测机制与投稿要求。当用户要求"检查论文 AI 率/AIGC 率""降 AI 率""降查重率/论文降重""论文改成不像 AI 写的""论文模式"等时使用。
 whenToUse: 用户要求对中文学术论文（本科/硕博论文、期刊稿）做 AI 生成率检测、逐段修改建议或降低 AI 率改写，或要求处理 Word/PPT/Excel/PDF 论文文档时。
 metadata:
