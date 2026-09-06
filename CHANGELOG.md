@@ -4,6 +4,16 @@
 
 > 角色命名以 2.4.0 为最终口径（A 初审 → B 引述核查 → C 查重自查 → D AI 率检测 → E 改后终审）；历史版本中的字母编号仅用于追溯，不再沿用。
 
+## 2.5.2 — DSH 交付层升级：官方 profile bundle（取代 2.5.1 的预设代码行方案）
+
+> 仍只落在 DSH 版仓库交付层；三份 SKILL.md version 保持 2.5.0，三平台资产未动。
+
+- 把 2.5.1 的 `plugin/paper-tools.mjs`（预设内代码行）升级为**官方形态 profile bundle**：`plugin/paper-mode-dsh-plugin/`（`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，patch `insert` 一行 `name: paper-mode-dsh-plugin`）。
+- 安装即官方路径：`dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin`（或 profile `package.json` 的 `dsh.profile.bundles` 注册），重启 `dsh web` 生效；插件出现在官方插件清单，`dsh plugin --profile web remove paper-mode-dsh-plugin` 可回退。
+- 工具注册在宿主全局工具层（任何模式会话可见 8 个 `paper_*` 工具）；2.5.1 的预设代码行已从论文模式预设中移除（避免双份注册）。
+- 脚本本体不复制进插件包（保持三平台同源）：插件按 `$DSH_HOME`/`~/.dsh` 技能扫描根与 `.agent-presets` 预设目录自动探测 `scripts/`，找不到时工具仍注册、执行期报错指引。
+- 其余行为不变：8 工具一一对应脚本、走 `ctx.shell`+会话沙箱、零 `@deepseek-ai` 依赖、Windows 自动 `python`、`paper_pdf_to_images` 仅 macOS。
+
 ## 2.5.1 — DSH 版附加：预设内代码行插件（三平台 SKILL 内容未变）
 
 > 本条目只落在 DSH 版仓库的交付层；**三份 SKILL.md 的 version 仍是 2.5.0 未随本条目改动**，`references/`/`docs/`/`scripts/` 三平台资产也未改动，check_sync 门禁不受影响。

@@ -1,0 +1,18 @@
+{
+  "name": "paper-mode-dsh-plugin",
+  "version": "1.0.0",
+  "description": "论文模式（paper-mode）原生工具插件：把 paper-mode 技能 scripts/ 下 8 个零依赖脚本封装成带 JSON Schema 的模型工具（paper_ai_signal / paper_office_extract / paper_docx_extract / paper_docx_write / paper_pdf_to_text / paper_pdf_to_images / paper_faith_check / paper_check_sync）。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "cordis.patch.yml"],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# paper-mode-dsh-plugin: 论文模式原生工具 bundle。
+# 作为 profile bundle 被加载（`dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin` 或
+# package.json `dsh.profile.bundles` 注册），把 8 个 paper_* 模型工具注册到宿主全局工具层：
+# 任何模式的会话都能看到它们；脚本本体（skills/paper-mode/scripts）随论文模式技能/预设安装，
+# 由插件在安装位置自动探测（见 lib/index.js resolveScriptsDir）。
+- insert:
+    - id: paper-tools
+      name: paper-mode-dsh-plugin

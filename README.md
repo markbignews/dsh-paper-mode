@@ -18,12 +18,12 @@
 | 术语 | 含义 | 与本仓库的关系 |
 |---|---|---|
 | **DeepSeek Harness（dsh）** | 宿主运行框架：基于 Cordis 的进程/服务组合；本技能运行于其中 | 载体（harness），不是本仓库 |
-| **插件（plugin / bundle）** | 注册服务/事件/工具的可装载 Cordis 包（如 `dsh-file-upload`、`walioffice-dsh-plugin`，用 `dsh plugin --profile <name> add` 装进 profile） | ⚠️ 本仓库主体不是这类 profile 插件；但**附带 `plugin/paper-tools.mjs` 预设代码行**：挂进论文模式预设后，在会话内注册 8 个真实模型工具（`paper_ai_signal` 等，把"手拼 python3 命令"升级为带 schema 的工具调用）。该代码行随预设复制分发，不必装进 profile、不必重启宿主 |
-| **技能（skill）** | `SKILL.md` + 资源目录（references/scripts/samples）的资产；由 dsh 内的 `dsh-skill-filesystem` 插件按扫描根发现，模型按需加载正文 | ✅ **本仓库就是这个**（skill bundle；安装目录名须为 `paper-mode`） |
-| **Agent 预设（preset）** | `~/.dsh/.agent-presets/<id>/agent.cordis.yml`：一份按会话组装的 Cordis 组合（引用官方插件行 + persona + 捆绑技能目录） | ✅ 本机"论文模式"预设用本技能 + `plugin/paper-tools.mjs` 组装（组合文件属本机配置；代码行随本仓库发布） |
-| **脚本工具箱** | `scripts/` 下八个 python/swift 脚本 | 附带资产，可脱离任何宿主单独命令行使用 |
+| **插件（plugin / bundle）** | 注册服务/事件/工具的可装载 Cordis 包（如 `dsh-file-upload`、`walioffice-dsh-plugin`，用 `dsh plugin --profile <name> add` 装进 profile） | ✅ **随附官方形态插件**：`plugin/paper-mode-dsh-plugin/` 是一个 profile bundle（`package.json` 声明 `dsh.bundle.patch`，`cordis.patch.yml` insert 一行），装进 profile 后在**宿主全局工具层**注册 8 个真实模型工具（`paper_ai_signal` 等），出现在官方插件清单，可用 `dsh plugin --profile <name> remove` 回退 |
+| **技能（skill）** | `SKILL.md` + 资源目录（references/scripts/samples）的资产；由 dsh 内的 `dsh-skill-filesystem` 插件按扫描根发现，模型按需加载正文 | ✅ **本仓库主体就是这个**（skill bundle；安装目录名须为 `paper-mode`） |
+| **Agent 预设（preset）** | `~/.dsh/.agent-presets/<id>/agent.cordis.yml`：一份按会话组装的 Cordis 组合（引用官方插件行 + persona + 捆绑技能目录） | ✅ 本机"论文模式"预设捆绑本技能（组合文件属本机配置）；技能里的 `scripts/` 同时是上方插件的脚本资产来源 |
+| **脚本工具箱** | `scripts/` 下八个 python/swift 脚本 | 附带资产（三平台同源）；插件不复制脚本，运行时探测已安装技能的 scripts 目录 |
 
-一句话：**本仓库 = DeepSeek Harness 的技能包（skill bundle）+ 随附一个"预设内代码行插件"`plugin/paper-tools.mjs`**：前者让模型按需加载方法论，后者让论文模式会话拥有注册在工具目录里的原生封装（仍是同一个方法论的两层交付，不是 profile 级 npm 插件）；对 WorkBuddy / Codex / Claude Code 则是同一技能装进各自技能目录的本地版本。以往资料中"DSH 插件版本"的说法不准确，统一以"DSH 版技能包（+ 代码行插件层）"为准。
+一句话：**本仓库 = DeepSeek Harness 的技能包（skill bundle）+ 官方形态插件 `plugin/paper-mode-dsh-plugin/`（profile bundle）**：前者让模型按需加载方法论，后者经 `dsh plugin`/profile bundles 装进宿主、把 8 个脚本封装成全局可调的原生工具（脚本本体仍随技能三平台同源，不复制进插件包）；对 WorkBuddy / Codex / Claude Code 则是同一技能装进各自技能目录的本地版本。以往资料中"DSH 插件版本"的说法不准确，统一以"DSH 版技能包（+ profile bundle 插件）"为准。
 
 ## 功能
 
@@ -35,7 +35,7 @@
 | 判定依据 | 五维信号（L1–L5）、8 条预防性写作规则、11 条修复策略、硬约束自检表、噪声预算 | `references/aigc_signals_zh.md` |
 | 流程方法 | 引述核查（角色B 先行）→ 查重自查（角色C）/ AI 率检测（角色D）→ 修改意见 → 确认改写 → 复查循环 → 角色E 终审 → 精确导出（详见 SKILL.md 子代理总览） | `SKILL.md` / `docs/thesis_workflow_zh.md` |
 | 精确导出 | 定稿文本**逐字**装回 `.docx`（数字/术语/公式/引号保留，支持 `#` 标题与 `**加粗**`） | `scripts/docx_write.py` |
-| 原生工具层 | 论文模式会话内注册 8 个带 schema 的模型工具（`paper_ai_signal` / `paper_office_extract` / `paper_docx_extract` / `paper_docx_write` / `paper_pdf_to_text` / `paper_pdf_to_images` / `paper_faith_check` / `paper_check_sync`），走会话沙箱执行脚本 | `plugin/paper-tools.mjs`（预设代码行，见下） |
+| 原生工具层 | 8 个带 schema 的模型工具（`paper_ai_signal` / `paper_office_extract` / `paper_docx_extract` / `paper_docx_write` / `paper_pdf_to_text` / `paper_pdf_to_images` / `paper_faith_check` / `paper_check_sync`），走会话沙箱执行脚本 | `plugin/paper-mode-dsh-plugin/`（profile bundle，见下） |
 
 ## 安装
 
@@ -54,24 +54,24 @@ ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 
 > 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。不要直接把仓库内容铺进扫描根目录（会因目录名 `dsh-paper-mode` 与 frontmatter `name: paper-mode` 不一致而被拒绝）。
 
-### 可选：装成"论文模式"预设并挂代码行插件（让 8 个脚本成为原生工具）
+### 可选：把 8 个脚本升级为官方原生工具（profile bundle 插件）
 
-技能本身足以让模型"读 SKILL 后手拼命令"运行脚本。若想让论文模式会话**直接拥有注册在工具目录里的原生工具**（`paper_ai_signal` / `paper_docx_extract` 等，参数化、免手拼命令、走会话沙箱），把本仓库的 `plugin/paper-tools.mjs` 挂进你的论文模式 Agent 预设：
+技能本身足以让模型"读 SKILL 后手拼命令"运行脚本。若想让 DSH 会话**直接拥有注册在工具目录里的原生工具**（`paper_ai_signal` / `paper_docx_extract` 等，参数化、免手拼命令、走会话沙箱），把本仓库的 `plugin/paper-mode-dsh-plugin/` 作为 **profile bundle** 装进 DSH：
 
 ```bash
-# 1) 预设目录（以 ~/.dsh/.agent-presets/paper-mode 为例；无则先按 DSH 文档创建）
-mkdir -p ~/.dsh/.agent-presets/paper-mode/plugin
-cp plugin/paper-tools.mjs ~/.dsh/.agent-presets/paper-mode/plugin/
-
-# 2) 在 ~/.dsh/.agent-presets/paper-mode/agent.cordis.yml 里加一行：
-#    - id: paper-tools
-#      name: './plugin/paper-tools.mjs'
-#    （行名以 ./ 开头 = 相对预设目录解析；预设需已包含 skills/paper-mode/scripts）
+# 1) 技能/脚本资产先就位（插件运行时探测 scripts 目录）
+#    a) 克隆技能：  git clone https://github.com/markbignews/dsh-paper-mode ~/.dsh/skills/paper-mode
+#    b) 或已有"论文模式"预设（预设技能目录 ~/.dsh/.agent-presets/<预设>/skills/paper-mode/scripts 亦可被探测）
+# 2) 本地安装 bundle（本仓库目录内执行；等价 dsh plugin --profile <name> add）
+cd dsh-paper-mode
+dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin
+# 3) 重启 dsh web（profile bundle 在启动时装载，须重启生效）
 ```
 
-- 该行是**预设自含插件**：随预设目录整体复制分发，不装进 profile、无需重启宿主；新会话开始即生效。
-- 代码行零 `@deepseek-ai` 依赖（只 import Node 内置模块），工具执行经 `ctx.shell` + 会话站立沙箱策略，与 `tool-bash` 同一边界。
-- 脚本仍可在任何平台（DSH 外）单独运行；本插件层仅把 DSH 论文模式会话内的调用方式升级为原生工具。Windows 下 python 解释器自动取 `python`（可用 `config.pythonCmd` 覆盖），`paper_pdf_to_images` 仅 macOS。
+- 插件包结构遵循官方 bundle 约定：`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，patch `insert` 一行 `name: paper-mode-dsh-plugin`——出现在**官方插件清单**，可用 `dsh plugin --profile web remove paper-mode-dsh-plugin` 回退。
+- 工具注册在**宿主全局工具层**：任何模式（标准/论文模式等）的会话都能调用这 8 个工具（对论文模式会话最有用；非论文任务可忽略）。
+- 包**不复制脚本**（脚本是三平台同源资产，真源在技能 `scripts/`）：apply 时按 `$DSH_HOME`/`~/.dsh` 下的技能扫描根与 `.agent-presets` 预设目录自动探测 `ai_signal.py` 所在目录，找不到时工具仍注册、执行期报错并给出指引；也可在组合行 `config.scriptsDir` 显式指定。
+- 插件零 `@deepseek-ai` 依赖（只 import Node 内置模块），工具执行经 `ctx.shell` + 会话站立沙箱策略，与 `tool-bash` 同一边界。Windows 下 python 解释器自动取 `python`（可用 `config.pythonCmd` 覆盖），`paper_pdf_to_images` 仅 macOS。
 
 
 ### Windows 用户说明
@@ -128,7 +128,7 @@ dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
 │   └── check_sync.py              # 三平台 SKILL 同源同步校验（CI/手动门禁）
 ├── samples/                       # 演示样例（sample_ai_style.txt / .docx）
 ├── plugin/
-│   └── paper-tools.mjs            # 可选"预设内代码行插件"：论文模式会话注册 8 个原生工具（挂进 agent.cordis.yml 即生效）
+│   └── paper-mode-dsh-plugin/     # 官方 profile bundle 插件：8 个原生 paper_* 工具（package.json + cordis.patch.yml + lib/index.js）
 ├── docs/
 │   └── thesis_workflow_zh.md      # 闭环流程方法论
 └── README.md / LICENSE / .gitignore   # 仓库级文件（不影响技能发现）

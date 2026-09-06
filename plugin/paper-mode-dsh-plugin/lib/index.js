@@ -1,50 +1,68 @@
-// paper-tools.mjs — 论文模式「预设自含插件」代码行。
+// paper-mode-dsh-plugin — 论文模式「原生工具插件」（profile bundle）。
 //
-// 被 ~/.dsh/.agent-presets/paper-mode/agent.cordis.yml 中的一行
-//   - id: paper-tools
-//     name: './paper-tools.mjs'
-//     config:
-//       scriptsDir: !!js "...skills/paper-mode/scripts 绝对路径..."
-// 加载的 Cordis 插件。行名以 "." 开头 = 预设相对文件行，随预设整体复制分发，
-// 无需安装进 profile、无需重启宿主。
+// 官方定义的一步到位形态：作为 bundle 装进 profile（package.json 的
+// `dsh.profile.bundles` + 本包 `cordis.patch.yml` insert 行，等价于
+// `dsh plugin --profile <name> add paper-mode-dsh-plugin`），由 Cordis
+// loader 以真实插件行加载并在宿主全局工具层注册模型工具；出现在官方
+// 插件清单，可用 `dsh plugin --profile <name> remove` 回退。
 //
-// 作用：把 skills/paper-mode/scripts/ 下 8 个零依赖 Python/Swift 脚本封装成
+// 作用：把 paper-mode 技能 scripts/ 下 8 个零依赖 Python/Swift 脚本封装成
 // 带 JSON Schema 的模型工具（paper_ai_signal / paper_office_extract /
 // paper_docx_extract / paper_docx_write / paper_pdf_to_text /
 // paper_pdf_to_images / paper_faith_check / paper_check_sync），模型直接调
 // 工具而非手拼 bash。执行统一走 ctx.shell + 会话站立沙箱策略（与 tool-bash
 // 同一机制，保持沙箱与审批边界），绝不绕开沙箱自起进程。
 //
-// 本文件在用户预设目录下执行：Node 向上 node_modules 解析到达不了宿主依赖，
-// 因此不 import 任何 @deepseek-ai/* 或第三方包，只 import Node 内置模块，
-// 工具定义按 ctx.tools.register 的原始契约手写（即 defineTool 产出的编译后
-// JSON Schema 形态：parameters 为完整 JSON Schema 对象，output.schema 与
-// output.render 为必填）。
+// 脚本本体不复制进本包：它们是三平台同源资产（真源在技能仓库 scripts/，
+// 随「论文模式」预设/技能安装在 ~/.dsh/.agent-presets/<预设>/skills/paper-mode/
+// 或任一技能扫描根的 paper-mode/scripts）。插件在 apply 时按候选位置探测，
+// 找不到时工具仍注册、执行期给出明确指引（避免本包在无技能环境下把预设
+// 挂载搞挂）。
+//
+// 模块零 @deepseek-ai/* 与第三方依赖，只 import Node 内置模块；工具定义按
+// ctx.tools.register 的原始契约手写（等价 defineTool 产出的编译后 JSON Schema
+// 形态：parameters 为完整 JSON Schema 对象，output.schema 与 output.render 必填）。
 import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const name = 'paper-tools'
+export const name = 'paper-mode-dsh-plugin'
 export const inject = ['tools']
 
 // ── 脚本目录解析 ────────────────────────────────────────────────────────────
-// 优先取行 config.scriptsDir（预设行里可用 !!js + baseUrl 显式给出）；
-// 缺省按本模块位置探测几种布局（预设根 / plugin 子目录 / 仓库根）。
+// 优先取 config.scriptsDir（预设/宿主组合行里可用 !!js 显式给出）；
+// 缺省探测：模块邻近布局 + 常见部署位置（dshHome 的 .agent-presets 预设技能
+// 目录、dshHome 的 skills 扫描根、用户级 ~/.agents 变体）。
+function dshHomeCandidates() {
+  const envHome = typeof process !== 'undefined' && process.env ? process.env : {}
+  const dshHome = envHome.DSH_HOME
+  const agentsHome = envHome.DSH_AGENTS_HOME
+  const userHome = typeof homedir === 'function' ? homedir() : envHome.HOME
+  const homes = [...new Set([dshHome, agentsHome, userHome ? join(userHome, '.dsh') : void 0, userHome ? join(userHome, '.agents') : void 0].filter(Boolean))]
+  const out = []
+  for (const home of homes) {
+    out.push(join(home, '.agent-presets', 'paper-mode', 'skills', 'paper-mode', 'scripts'))
+    out.push(join(home, 'skills', 'paper-mode', 'scripts'))
+  }
+  return out
+}
 function resolveScriptsDir(config) {
   if (config && typeof config.scriptsDir === 'string' && config.scriptsDir.length > 0) {
     return config.scriptsDir
   }
   const here = fileURLToPath(new URL('.', import.meta.url))
   const candidates = [
-    join(here, 'skills/paper-mode/scripts'), // 模块在预设根
-    join(here, '../skills/paper-mode/scripts'), // 模块在 <预设>/plugin/
-    join(here, '../scripts'), // 模块在 <repo>/plugin/（仓库自测）
-    join(here, 'scripts'), // 模块在 <repo> 根
+    join(here, 'skills/paper-mode/scripts'), // 模块紧邻技能（仓库自测/预设捆绑）
+    join(here, '../skills/paper-mode/scripts'), // <预设>/plugin/ 布局
+    join(here, '../scripts'), // <repo>/plugin/ 布局
+    join(here, 'scripts'), // <repo> 根布局
+    ...dshHomeCandidates(),
   ]
   for (const p of candidates) {
     if (existsSync(join(p, 'ai_signal.py'))) return p
   }
-  return join(here, 'skills/paper-mode/scripts') // 缺失留给执行期报错
+  return candidates[0] // 缺失留给执行期报错（报错信息含候选清单）
 }
 
 // ── 命令构造 ────────────────────────────────────────────────────────────────
@@ -70,7 +88,7 @@ function buildCommand(prefixParts, scriptPath, argv, style) {
 // 都有标记行，模型按相同惯例处置。
 async function runScript(ctx, exec, command, timeoutMs, stdoutMaxBytes) {
   const shell = ctx.get('shell')
-  if (!shell) throw new Error('paper-tools: shell 服务不可用（依赖宿主 shell 执行器）')
+  if (!shell) throw new Error('paper-mode-dsh-plugin: shell 服务不可用（依赖宿主 shell 执行器）')
   const sandboxPolicy = ctx.get('sandboxPolicy')
   const standing = sandboxPolicy && typeof sandboxPolicy.resolve === 'function'
     ? sandboxPolicy.resolve(exec && exec.agent ? { session: exec.agent.session } : {})
@@ -140,7 +158,7 @@ function register(ctx, scriptsDir, config, def) {
     },
     async execute(args, exec) {
       if (!existsSync(scriptPath)) {
-        throw new Error(`paper-tools: 找不到脚本 ${scriptPath}（scriptsDir 配置错误？）`)
+        throw new Error(`paper-mode-dsh-plugin: 找不到脚本 ${scriptPath}（scriptsDir 配置错误？脚本资产未随技能安装：本插件只在已安装 paper-mode 技能（含 scripts/）的机器上可用）`)
       }
       const argv = def.argsFrom(args)
       return runScript(
