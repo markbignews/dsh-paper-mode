@@ -1,0 +1,15 @@
+# dsh-paper-mode 根 bundle —— 让整个仓库可以直接作为 profile bundle 安装。
+#
+# 为什么根目录也要是一个 bundle：桌面版「设置 → 插件」与 `dsh plugin --profile <p> add <目录>`
+# 都按**目标目录的 package.json** 判定它是不是组合包（`dsh-plugin-manager` 的
+# `inspectionOf` 只看 `dsh.bundle` 是否为对象）。此前本仓库根目录没有 package.json，
+# 装上去只会成为"普通依赖"，插件管理器随即报"没有声明组合包，不能作为插件管理"。
+#
+# insert 一条插件行，指向仓库内的插件包**入口文件**（相对本文件的路径）：
+#   1) 仓库根被装进 profile 时，插件随仓库一起落盘，无需再单独安装；
+#   2) 路径解析不经过包的 exports/自引用，避免"未安装成 node_modules 依赖"时的解析歧义；
+#   3) 仍与官方形态一致——插件本身也保留自己的 package.json（声明 dsh.bundle.patch），
+#      所以它既能当"整个仓库一个 bundle"用，也能单独 `dsh plugin add ./plugin/paper-mode-dsh-plugin`。
+- insert:
+    - id: paper-tools
+      name: ./plugin/paper-mode-dsh-plugin/lib/index.js

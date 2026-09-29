@@ -1,0 +1,37 @@
+{
+  "name": "dsh-paper-mode",
+  "version": "2.7.0",
+  "description": "论文模式（paper-mode）：中文学术论文 AIGC/AI 痕迹与查重自查、降率改写，并把 skills/paper-mode/scripts 下 8 个零依赖脚本注册成 paper_* 原生工具。",
+  "icon": "./icon.svg",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markbignews/dsh-paper-mode.git"
+  },
+  "exports": {
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon.svg": "./icon.svg"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "docs/",
+    "references/",
+    "samples/",
+    "scripts/",
+    "plugin/"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

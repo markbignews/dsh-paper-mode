@@ -67,33 +67,42 @@ git clone https://github.com/markbignews/dsh-paper-mode <projectRoot>/.dsh/skill
 ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 ```
 
-> 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。**根目录本身不是 bundle**（`package.json` 在 `plugin/paper-mode-dsh-plugin/` 里），所以整仓铺进扫描根时技能（`SKILL.md`）仍被正常发现，但下面那步安装插件必须指向 `plugin/paper-mode-dsh-plugin/` 子目录。
+> 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。整仓铺进扫描根时技能（`SKILL.md`）正常被发现；根目录现在也自带 `package.json`（声明 `dsh.bundle`），因此整仓本身同样可以当插件装（见下）。
 
 ### 可选：把 8 个脚本升级为官方原生工具（profile bundle 插件）
 
-技能本身足以让模型"读 SKILL 后手拼命令"运行脚本。若想让 DSH 会话**直接拥有注册在工具目录里的原生工具**（`paper_ai_signal` / `paper_docx_extract` 等，参数化、免手拼命令、走会话沙箱），把本仓库的 `plugin/paper-mode-dsh-plugin/` 作为 **profile bundle** 装进 DSH：
+技能本身足以让模型"读 SKILL 后手拼命令"运行脚本。若想让 DSH 会话**直接拥有注册在工具目录里的原生工具**（`paper_ai_signal` / `paper_docx_extract` 等，参数化、免手拼命令、走会话沙箱），把本仓库作为 **profile bundle** 装进 DSH。**仓库根现在就是一个声明了 `dsh.bundle` 的组合包**，所以两种装法都行：整仓（推荐，插件随仓库落盘）或只装插件子目录。
 
 ```bash
 # 1) 技能/脚本资产先就位（插件运行时探测 scripts 目录）
 #    a) 克隆技能：  git clone https://github.com/markbignews/dsh-paper-mode ~/.dsh/skills/paper-mode
 #    b) 0.1.x 的"论文模式"预设技能目录（~/.dsh/.agent-presets/<预设>/skills/paper-mode/scripts）仍会被探测，
 #       但该预设布局在 0.2.0 已不再被读取，请优先用 a)
-# 2) 安装 bundle —— 注意目标必须是 plugin/paper-mode-dsh-plugin/ 子目录，不是仓库根
+# 2) 安装 bundle —— 二选一（都由目标目录的 package.json 判定是不是组合包）
 cd dsh-paper-mode
-#    Web 版（dsh web / 浏览器版 profile）：
+#    2a) 整仓安装（推荐）：根 package.json 声明 dsh.bundle，patch 插入仓库内的插件入口
+dsh plugin --profile web add .
+#    2b) 只装插件子目录：插件包自己也声明 dsh.bundle.patch
 dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin
 #    桌面版（DeepSeek Harness Desktop）：用 shell 里的 dsh 操作 `desktop` profile 会被拒绝
-#    （该 profile 由 Electron 应用独占）。请在应用内「设置 → 插件」安装本地目录，
+#    （该 profile 由 Electron 应用独占）。请在应用内「设置 → 插件」安装**上面对应的目录**，
 #    或完全退出桌面版后用桌面版自带的 carrier CLI 执行同一 add 命令；且 dsh 版本须与宿主一致。
 # 3) 重启宿主（profile bundle 在启动时装载，须重启生效）
 ```
 
-> ⚠️ 仓库根目录没有 `package.json`：把**仓库根**传给 `add` 时，依赖会被加进 profile，但随后
-> 解析 bundle 直接抛错、命令以非 0 退出（本机复现：`Error: dsh: cannot resolve profile bundle
-> "dsh-paper-mode"`，CLI exit 1；再次执行才回到 exit 0），**不会**注册成 profile bundle
-> （`dsh.profile.bundles` 里没有它，插件也不生效）。务必指向 `./plugin/paper-mode-dsh-plugin`。
+> ⚠️ **装错目标会得到"不是组合包"的拒绝**：插件管理器只看目标目录 `package.json` 里的 `dsh.bundle`
+> 是否为对象。指向**没有 package.json 的目录**（例如旧版仓库根、或克隆后误指的父目录）时，
+> 依赖会被加进去但不会被当作组合包，桌面版插件管理器会报
+> **"没有声明组合包，不能作为插件管理"**（CLI 侧则为 `cannot resolve profile bundle`，exit 1）。
+> 本仓库根已补上 `package.json` + `cordis.patch.yml` + `locale/` + `icon.svg`，因此 2a 是合法装法；
+> 若你仍在旧提交上，请先 `git pull`。
+>
+> 提交前可自检组合包声明（零依赖、随仓库自带）：
+> `node plugin/paper-mode-dsh-plugin/verify-plugin-manifest.mjs` —— 校验根与插件子目录的
+> `dsh.bundle`、patch 文件是否存在且可读、insert 入口能否解析、icon/locale 是否合法。
 
 - 插件包结构遵循官方 bundle 约定：`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，patch `insert` 一行 `name: paper-mode-dsh-plugin`——出现在**官方插件清单**，可用 `dsh plugin --profile web remove paper-mode-dsh-plugin` 回退。
+- **仓库根也是组合包**（`package.json` 的 `dsh.bundle.patch: ./cordis.patch.yml`），patch 插入的是仓库内插件入口的**相对路径**（`./plugin/paper-mode-dsh-plugin/lib/index.js`）：这样整仓安装即可用、无需再装子包，也不依赖包的 exports 自引用；插件子目录仍保留自己的 `package.json`，所以两条装法都合法。`package.json` 另带 `icon.svg` 与 `locale/{zh,en}.json`，用于插件管理器的图标与显示名（缺失只影响显示，不影响装载）。
 - 工具注册在**宿主全局工具层**：任何模式（标准/论文模式等）的会话都能调用这 8 个工具（对论文模式会话最有用；非论文任务可忽略）。
 - 包**不复制脚本**（脚本是三平台同源资产，真源在技能 `scripts/`）：apply 时按技能扫描根（`<dshHome>/skills`、`<agentsHome>/skills`、`~/.dsh/skills`、`~/.agents/skills`）+ **项目级根**（从进程 cwd 向上找 `<projectRoot>/.dsh/skills`、`<projectRoot>/.agents/skills`）自动探测 `ai_signal.py` 所在目录，另保留 0.1.x 的 `.agent-presets` 旧布局探测（0.2.0 已不读取该目录，仅作兼容）；找不到时工具仍注册、执行期报错并给出全部已尝试候选路径；也可在组合行 `config.scriptsDir` 显式指定。
 - 插件只硬依赖 `tools`（`inject: ['tools']`）：`shell`/`sandboxPolicy` 在执行期取用并按调用兜底报错，所以在缺 bash/沙箱服务的组合里插件仍加载、8 个工具仍注册，只是执行期报明确错误。
@@ -138,7 +147,10 @@ DSH 官方监视行为：`SKILL.md` 正文与 frontmatter 的修改在**下一�
 ## 目录结构
 
 ```
-dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
+dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/；整仓也可当 profile bundle 装
+├── package.json                   # 根组合包声明：dsh.bundle.patch + icon + exports（让整仓可被插件管理器识别）
+├── cordis.patch.yml               # 根 bundle 的 patch：insert 仓库内插件入口（相对路径）
+├── icon.svg / locale/{zh,en}.json # 插件管理器显示用（图标 + 显示名/描述；缺失只影响显示）
 ├── SKILL.md                       # 技能正文（frontmatter: name/description/whenToUse/metadata；version 仅供人读，DSH 不解析）
 ├── references/
 │   ├── aigc_signals_zh.md         # 信号库 v2：判定与改写的唯一依据
@@ -155,11 +167,12 @@ dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
 ├── samples/                       # 演示样例（sample_ai_style.txt / .docx）
 ├── plugin/
 │   └── paper-mode-dsh-plugin/     # 官方 profile bundle 插件：8 个原生 paper_* 工具（package.json + cordis.patch.yml + lib/index.js）
+│       ├── verify-plugin-manifest.mjs  # 组合包声明自检：dsh.bundle/patch/入口/icon/locale（提交前跑，零依赖）
 │       ├── verify-dsh-0.2.0.md    # 0.2.0 验收记录（可复现步骤 + 实测结果 + 已知限制）
 │       └── verify-dsh-0.2.0.mjs   # 验收用 Cordis 插件（只读验收资产，不随包发布、运行时也不加载）
 ├── docs/
 │   └── thesis_workflow_zh.md      # 闭环流程方法论
-└── README.md / LICENSE / .gitignore   # 仓库级文件（不影响技能发现）
+└── README.md / LICENSE / CHANGELOG.md /.gitignore   # 仓库级文件（不影响技能发现；根 package.json 仅供插件安装）
 ```
 
 > **frontmatter 说明（0.2.0）**：DSH 解析 `name`/`description`/`whenToUse`/`metadata`，以及 `user-invocable`/`disable-model-invocation` 调用策略字段；`version` **不被解析**（纯人读，未知字段静默忽略），它只服务于本仓库的三平台同源门禁 `scripts/check_sync.py`。**切勿**使用 camelCase 旧键（`userInvocable`/`modelInvocable`/`disableModelInvocation`）——0.2.0 会直接抛错并忽略整份 `SKILL.md`。

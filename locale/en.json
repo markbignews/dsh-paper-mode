@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Paper Mode",
+    "description": "AIGC/AI-trace estimation, duplicate-risk self-check and rewrite for Chinese theses; ships 8 paper_* native tools (signal scan, Office/PDF extraction, fidelity check, exact export)."
+  }
+}

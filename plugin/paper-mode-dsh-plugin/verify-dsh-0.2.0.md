@@ -11,6 +11,39 @@
 > **独立复核**：本记录由 Lead 编写后，另一名成员用**自建 profile + 自写严格校验器**做了对抗式复核，
 > 结论一致（其反例与补充证据见文末「复核补记」）。复核曾发现本文件若干断言不实，已按复核结论修正。
 
+## 前置：为什么仓库根也必须声明 `dsh.bundle`
+
+0.2.0 的插件管理器（桌面版「设置 → 插件」与 `dsh plugin --profile <p> add <目标>`）判定"能不能作为
+插件管理"只看**目标目录 `package.json` 里的 `dsh.bundle` 是否为对象**（`dsh-plugin-manager` 的
+`inspectionOf` / `not-a-bundle` 分支）。本仓库此前只在 `plugin/paper-mode-dsh-plugin/` 里声明了
+`dsh.bundle`，根目录连 `package.json` 都没有，于是：
+
+- 在桌面版插件管理器里安装本仓库 → 被装成"普通依赖"，管理器报**"没有声明组合包，不能作为插件管理"**；
+- CLI 侧 `dsh plugin --profile web add <仓库根>` → 依赖被加入但随后抛
+  `dsh: cannot resolve profile bundle "dsh-paper-mode"`，exit 1。
+
+修法（已落地）：根目录新增 `package.json`（声明 `dsh.bundle.patch: ./cordis.patch.yml`，另带
+`icon.svg` 与 `locale/{zh,en}.json` 供管理器显示）+ `cordis.patch.yml`，patch 用**相对路径**插入
+仓库内插件入口 `./plugin/paper-mode-dsh-plugin/lib/index.js`——整仓安装即可用、无需再装子包，
+也不依赖包的 exports 自引用。插件子目录仍保留自己的 `package.json`，两种装法都合法。
+
+实测（真实 0.2.0 CLI）：
+
+```
+$ dsh plugin --profile web add <仓库根>
+dependencies:
++ dsh-paper-mode link:<仓库根>
+$ dsh --profile web --dump-config | grep -A2 paper-tools
+- id: paper-tools
+  name: >-
+    file://<profile>/node_modules/dsh-paper-mode/plugin/paper-mode-dsh-plugin/lib/index.js
+```
+
+并且用同一套严格验收跑通了两种落地形态：symlink 安装（`link:`）与 pnpm 落盘的真实 copy 安装，
+均 **ok=true 8/8**。注意 `skill` 侧不受影响：`package.json` 不参与技能发现（技能名取 SKILL.md
+frontmatter 的 `name`），整仓铺进扫描根仍照常被发现。
+
+
 ## 0. 需要先修的问题（适配前的基线）
 
 基线用 git 提交 `9ae8231` 的原始插件文件复跑同一验收链路得到（存档：`accept-before.json`、
@@ -183,6 +216,9 @@ export DSH_PERMISSION_MODE=danger-full-access             # 仅验收用：本�
   `@deepseek-ai/dsh*` 的 peer 范围）不会拦它，**无需版本豁免**。
 - **项目级安装也覆盖**：在 `<projectRoot>/.dsh/skills/paper-mode` 下装技能、进程 cwd 设为该项目根，
   严格判定同样 8/8（插件会从 cwd 向上探测项目级扫描根）。
+- **整仓安装（根 bundle）也覆盖**：以仓库根为 bundle（`dsh-paper-mode` → 根 `cordis.patch.yml`
+  → 相对路径插入插件入口）跑严格验收，**symlink 安装与真实 copy 安装两种形态均 8/8**；
+  `--dump-config` 中 `paper-tools` 的 `name` 解析为 `<profile>/node_modules/dsh-paper-mode/plugin/…`。
 - `paper_pdf_to_images` 只在 macOS 可用；沙箱下 clang 默认模块缓存目录常被拒写，插件会自动
   追加 `-Xcc -fmodules-cache-path=<会话工作区>/.paper-mode-swift-cache`（没有工作区身份时退回
   本机临时目录的同名子目录），缓存落在工作区/临时目录，不污染技能目录。
