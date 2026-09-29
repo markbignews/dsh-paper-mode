@@ -8,6 +8,11 @@
 
 > 三份 SKILL.md 的 frontmatter `version` **保持 2.7.0 不变**（`scripts/check_sync.py` 要求三平台 version 同值，本次只有 DSH 版仓库可改，故用本轮标记而不抬 version）；`references/`、`docs/`、`scripts/` 未改动，三平台同源门禁仍 PASS。
 
+- **新增 DSH 0.2.0 agent preset「论文模式」**（`presets/paper.patch.yml`，随根 bundle 的第二个 patch 装载；preset id `paper`，官网当前仅 standard/ptc/minimal/cordis 四个内置）：0.2.0 起 preset 不再是 `$DSH_HOME/.agent-presets/<id>/` 目录，而是一条 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 是**完整**子插件列表。本 preset = persona（身份/红线/技能指针）+ agent-instructions + **skill-filesystem** + tool-skill + bash/pwsh + fs/fs-search + jobs + web + 子代理（`subagent`/`subagent_fork`/`workflow`）+ 交互（`ask_user_question`/`todo_write`/`present`）+ 长文档压缩。要点：
+  - **preset 必须自己挂 `skill-filesystem`**：`dsh-web-app`（桌面版/Web 必备）在宿主层把 `skill-filesystem`、`tool-skill` 设为 `disabled`（官方注释 "presets own local discovery"），官方三个 preset 也都各自挂。实测对照：桌面版等价组合下缺这一行 → preset 作用域 `skills.list()` 为空、`skill` 工具报 `unknown or no longer available`；加上后返回 `['paper-mode']`。
+  - **不重复挂载 `paper-tools`**：仓库根 `cordis.patch.yml` 已在宿主层 insert，工具层 `global ∪ scope 链` 的合并语义下对 preset 可见；重复挂载会报 `paper-tools … never started`（已复现）。
+  - **宿主前提**：`tool-subagent` 的 `modelSelectionSettings: true` 需要宿主层 `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（由 `dsh-web-app` 提供）；只有 `dsh-base` 的最小组合需去掉该项或补宿主行，否则带 broken 诊断。
+  - 激活验收：`agentPresets.list()` 读到 `paper` 且 `broken` 为空、composition 21 行全启用；base 形态与桌面版等价形态下 preset 作用域都能看到 `paper-mode` 技能。
 - **插件按 0.2.0 契约重写** `plugin/paper-mode-dsh-plugin/lib/index.js`：
   - 执行路径由 0.1.x 的 `ctx.shell.run(spec)` 改为 0.2.0 的 `ctx.shell.execute(ctx.shell.resolve(req))` + `await handle.result()`（`ShellRunResult`），并保留 `run()` 特性探测分支用于 0.1.x 尽力兼容（0.1.5 实测受该环境自身 sharp 签名问题阻断，未验证）。
   - `inject` 保持最小硬依赖 `['tools']`：`shell`/`sandboxPolicy` 在执行期用 `ctx.get` 取并按调用兜底报错——这样在尚未挂 bash/sandbox 的组合里插件仍会加载、8 个工具仍注册（缺服务时执行期给出明确错误）；若把它们写进 `inject`，缺任一服务时整条插件行会一直 pending、工具全部消失。

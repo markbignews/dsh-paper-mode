@@ -11,6 +11,7 @@
   },
   "exports": {
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./presets/*.patch.yml": "./presets/*.patch.yml",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
     "./icon.svg": "./icon.svg"
@@ -21,6 +22,7 @@
     "LICENSE",
     "CHANGELOG.md",
     "cordis.patch.yml",
+    "presets/",
     "icon.svg",
     "locale/*.json",
     "docs/",
@@ -31,7 +33,10 @@
   ],
   "dsh": {
     "bundle": {
-      "patch": "./cordis.patch.yml"
+      "patch": [
+        "./cordis.patch.yml",
+        "./presets/paper.patch.yml"
+      ]
     }
   }
 }

@@ -66,7 +66,9 @@ function parsePatchList(text, file) {
         insertIndent = indent
       }
       if (indent < insertIndent) inInsert = false
-      else {
+      // 只收 insert 列表**直接子项**（缩进与首项相同）的 name；preset 等嵌套列表里的
+      // 子插件（更深缩进）不是顶层 insert 目标，不能算作"裸包名"。
+      else if (indent === insertIndent) {
         const m = line.match(/^-?\s*name:\s*(.+?)\s*$/)
         if (m) insertNames.push(m[1].replace(/^['"]|['"]$/g, ''))
       }

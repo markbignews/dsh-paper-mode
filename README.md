@@ -102,8 +102,60 @@ dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin
 > `dsh.bundle`、patch 文件是否存在且可读、insert 入口能否解析、icon/locale 是否合法。
 
 - 插件包结构遵循官方 bundle 约定：`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，patch `insert` 一行 `name: paper-mode-dsh-plugin`——出现在**官方插件清单**，可用 `dsh plugin --profile web remove paper-mode-dsh-plugin` 回退。
-- **仓库根也是组合包**（`package.json` 的 `dsh.bundle.patch: ./cordis.patch.yml`），patch 插入的是仓库内插件入口的**相对路径**（`./plugin/paper-mode-dsh-plugin/lib/index.js`）：这样整仓安装即可用、无需再装子包，也不依赖包的 exports 自引用；插件子目录仍保留自己的 `package.json`，所以两条装法都合法。`package.json` 另带 `icon.svg` 与 `locale/{zh,en}.json`，用于插件管理器的图标与显示名（缺失只影响显示，不影响装载）。
+- **仓库根也是组合包**（`package.json` 的 `dsh.bundle.patch` 是一个**列表**：`./cordis.patch.yml` + `./presets/paper.patch.yml`），patch 插入的是仓库内插件入口的**相对路径**（`./plugin/paper-mode-dsh-plugin/lib/index.js`）：这样整仓安装即可用、无需再装子包，也不依赖包的 exports 自引用；插件子目录仍保留自己的 `package.json`，所以两条装法都合法。`package.json` 另带 `icon.svg` 与 `locale/{zh,en}.json`，用于插件管理器的图标与显示名（缺失只影响显示，不影响装载）。
 - 工具注册在**宿主全局工具层**：任何模式（标准/论文模式等）的会话都能调用这 8 个工具（对论文模式会话最有用；非论文任务可忽略）。
+
+### 在 0.2.0 的「Agent 预设」里使用（论文模式预设）
+
+0.2.0 起 preset 不再是 `$DSH_HOME/.agent-presets/<id>/` 目录，而是**一条 `@deepseek-ai/dsh-agent-preset`
+声明**，随 bundle 的 patch 携带；`config.plugins` 是**完整**的子插件列表（不是叠加）。本仓库根 bundle
+的第二个 patch 文件 [`presets/paper.patch.yml`](presets/paper.patch.yml) 就声明了一个 preset：
+
+| 字段 | 值 |
+|---|---|
+| preset id | `paper` |
+| 显示名 | 论文模式 |
+| 排序 | `order: 5` |
+| 内容 | persona（身份/红线/技能指针）+ agent-instructions + **skill-filesystem** + tool-skill + bash/pwsh + fs/fs-search + jobs + web + 子代理（`subagent`/`subagent_fork`/`workflow`）+ 交互（`ask_user_question`/`todo_write`/`present`）+ 长文档压缩 |
+
+> **preset 必须自己挂 `skill-filesystem`（关键）**：桌面版/Web 的 `dsh-web-app` 在**宿主层**把
+> `skill-filesystem` 与 `tool-skill` 都设为 `disabled`（官方注释："presets own local discovery"），
+> 官方 standard/ptc/cordis 三个 preset 也都各自挂一行。本 preset 因此显式挂载；实测对照：
+> 桌面版等价组合下缺这一行时 `skills.list()` 在 preset 作用域里返回**空**，`skill` 工具会报
+> `skill "paper-mode" is unknown or no longer available`，而加上这一行即返回 `['paper-mode']`。
+>
+> **宿主前提**：本 preset 的 `tool-subagent` 开了 `modelSelectionSettings: true`，它要求宿主层存在
+> `@deepseek-ai/dsh-tool-subagent/model-selection-settings` —— 该行由 `dsh-web-app` 提供（桌面版/Web
+> 都有）。若你把插件装进**只有 `dsh-base`** 的最小组合，请去掉该配置项或在 profile 补一行，
+> 否则 preset 激活会带 broken 诊断。
+
+**三步启用**：
+
+1. **同步并重装 bundle**：preset 是 bundle 的 patch 内容，改了必须让宿主重新装载 ——
+   `git -C ~/.dsh/skills/paper-mode pull` 之后，在桌面版「设置 → 插件」里对 `dsh-paper-mode`
+   执行一次重装/重启宿主（patch 列表在安装时就已固定，仅改文件不会生效）。
+2. **新开会话，选择 preset `论文模式`**（预设选择器在输入框旁；会话日志会记住 preset id，
+   重启按当前定义恢复）。
+3. 可选：把它设为默认 —— 在 profile 的 `cordis.patch.yml` 里覆盖注册表行：
+   ```yaml
+   - id: agent-preset-registry
+     name: '@deepseek-ai/dsh-agent-preset-registry'
+     config:
+       default: paper
+   ```
+   （或在 Web 设置里改默认 preset。）
+
+**验证是否真的装上了**：预设在启动时**预先激活一次**，激活失败的行会留在名册里并带诊断。
+桌面版可用 `cordis_inspect_query`（host / `Config.listConfigs`）看 `preset-paper` 行的状态；
+命令行等价物是 `dsh --profile <p> --dump-config | grep -A4 preset-paper`（能看到行即声明已装载）。
+本仓库自带的验收记录里附了一份最小组合的实测：名册读到 `paper`，且 `broken` 为空
+（即全部子插件激活成功，无诊断）。
+
+**注意**：8 个 `paper_*` 工具由**宿主层**（根 `cordis.patch.yml`）注册，对任何 preset 都可见，
+所以 preset 里不需要重复挂载插件（重复挂载会因模块名解析报 `paper-tools … never started`）；
+preset 负责的是"论文模式的身份 + 流程需要的工具集合"。若你只装了插件子包而没装整仓 bundle，
+可在 preset 里取消注释 `paper-tools` 行（见文件内注释）。
+
 - 包**不复制脚本**（脚本是三平台同源资产，真源在技能 `scripts/`）：apply 时按技能扫描根（`<dshHome>/skills`、`<agentsHome>/skills`、`~/.dsh/skills`、`~/.agents/skills`）+ **项目级根**（从进程 cwd 向上找 `<projectRoot>/.dsh/skills`、`<projectRoot>/.agents/skills`）自动探测 `ai_signal.py` 所在目录，另保留 0.1.x 的 `.agent-presets` 旧布局探测（0.2.0 已不读取该目录，仅作兼容）；找不到时工具仍注册、执行期报错并给出全部已尝试候选路径；也可在组合行 `config.scriptsDir` 显式指定。
 - 插件只硬依赖 `tools`（`inject: ['tools']`）：`shell`/`sandboxPolicy` 在执行期取用并按调用兜底报错，所以在缺 bash/沙箱服务的组合里插件仍加载、8 个工具仍注册，只是执行期报明确错误。
 - 插件零 `@deepseek-ai` 依赖（只 import Node 内置模块），工具执行经 `ctx.shell` + 会话站立沙箱策略，与 `tool-bash` 同一边界。Python 解释器优先取随 DSH 运行时捆绑的解释器（`…/runtime/primary-runtime/dependencies/python/bin/python3`，桌面版自带、含 python-docx/pptx/openpyxl/Pillow），其次才是 PATH 上的 `python3`（Windows 为 `python`）；可用 `config.pythonCmd` 覆盖。`paper_pdf_to_images` 仅 macOS，且已自动把 Swift 模块缓存指到工作区内可写目录（沙箱下默认缓存目录常被拒写）。
@@ -148,8 +200,9 @@ DSH 官方监视行为：`SKILL.md` 正文与 frontmatter 的修改在**下一�
 
 ```
 dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/；整仓也可当 profile bundle 装
-├── package.json                   # 根组合包声明：dsh.bundle.patch + icon + exports（让整仓可被插件管理器识别）
+├── package.json                   # 根组合包声明：dsh.bundle.patch（cordis.patch.yml + presets/paper.patch.yml）+ icon + exports
 ├── cordis.patch.yml               # 根 bundle 的 patch：insert 仓库内插件入口（相对路径）
+├── presets/paper.patch.yml        # DSH 0.2.0 agent preset 声明：id=paper（论文模式）与其子插件列表
 ├── icon.svg / locale/{zh,en}.json # 插件管理器显示用（图标 + 显示名/描述；缺失只影响显示）
 ├── SKILL.md                       # 技能正文（frontmatter: name/description/whenToUse/metadata；version 仅供人读，DSH 不解析）
 ├── references/

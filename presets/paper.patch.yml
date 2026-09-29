@@ -1,0 +1,150 @@
+# DSH 0.2.0 agent 预设：论文模式（paper-mode）
+#
+# 形态说明：0.2.0 的 preset 就是一条 `@deepseek-ai/dsh-agent-preset` 声明，
+# 由 bundle 的 patch 携带（`$DSH_HOME/.agent-presets/<id>/` 旧布局已不再被读取）。
+# 本文件与根 `cordis.patch.yml` 同属 `dsh-paper-mode` bundle 的 patch 列表：
+# 装一次仓库，既注册 8 个 paper_* 原生工具，也新增可选的 `paper` preset。
+#
+# 覆盖/改名要点：
+#   · Loader 行 id 随官方示例用 `preset-<presetId>`（这是惯例，不是运行时强制；`config.id`
+#     才是会话侧标识，也是覆盖/恢复时要匹配的键）。
+#   · 想把 paper 设为默认：在 profile 的 cordis.patch.yml 覆盖 `agent-preset-registry`
+#     行的 `config.default: paper`（或 config.selectedDefault）。
+#   · 想改预设内容：**不要**改本文件后指望热生效——按行 id `preset-paper` 写覆盖补丁
+#     （覆盖会整段替换 config，需要把下面 config 完整重述一遍）。
+#   · 子插件按普通模块解析：`paper-mode-dsh-plugin` 来自 profile 的依赖（本仓库根
+#     bundle 会把它作为同一仓库的一部分一起落盘），`@deepseek-ai/*` 来自 dsh 安装。
+- insert:
+    - id: preset-paper
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: paper
+        name: 论文模式
+        description: 中文学术论文 AIGC/查重自查与降率改写（paper-mode 技能 + 8 个 paper_* 原生工具）
+        order: 5
+        plugins:
+          # ── 人设：只放身份/触发/红线/技能指针（很短的固定开销；详细流程在技能里按需加载）──
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                你是「论文模式」助手：面向中文学术论文（本科/硕博/期刊稿）做 AIGC/AI 痕迹与查重风险的**估算**、给逐段修改意见，并按用户指定的目标迭代改写降率。
+
+                硬性要求：
+                - 先问清服务范围（一条龙全流程 / 只做某个环节 / 自定义），问清前不对论文运行任何检测或改写。
+                - 任何 AI 率/查重结论必须声明「这是基于语言特征的估算，不是知网/维普/Turnitin 官方结果，官方实测才是最终标准」。
+                - 不得编造或改动事实、数据、实验、案例与引用；数字、术语、公式、图表引用、引用编号必须逐字保留（改写前后用 `paper_faith_check` 机检）。
+                - 检测与复查一律交给**不带本会话历史**的全新子代理（角色 A–E，见技能正文）；改写着不得自测。
+                - 输出用中文，学术语体；长报告落盘到任务目录，聊天只给结论摘要 + 最高优先级项 + 路径。
+                完整方法论与流程以技能 `paper-mode` 的正文为准：开始前先用 `skill` 工具加载它，并按它给出的角色编排执行。
+              suffix: 你的工作目录是 {{cwd}}。
+
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          # ── 技能发现必须由 preset 自己挂（关键，勿删）──
+          # dsh-web-app（桌面版/Web 必备）在宿主层把 skill-filesystem 与 tool-skill 都设为
+          # disabled，注释原文即 "presets own local discovery"；官方 standard/ptc/cordis
+          # 三个 preset 也都各自挂 skill-filesystem。缺这一行时 preset 作用域里
+          # skills.list() 返回空 → `skill` 工具报 "skill paper-mode is unknown or no
+          # longer available"，本预设正文（角色 A–E 编排、references 任务书）将完全取不到。
+          # 默认 includeDefaultRoots=true 会扫 <dshHome>/skills、<agentsHome>/skills、
+          # <projectRoot>/.dsh/skills 等，把技能克隆到 ~/.dsh/skills/paper-mode 即可；
+          # 技能若在自定义目录，再加 customSkillDirs。
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          # ── 8 个原生工具 ──
+          # 不在这里重复挂载插件：仓库根 bundle 的 `cordis.patch.yml` 已在宿主层
+          # insert 了 `paper-tools`（宿主工具层对所有 preset 可见），重复挂载会因
+          # 模块名解析问题反而启动失败（preset 校验会报 `paper-tools … never started`）。
+          # 若你只装了插件子包（没有整仓 bundle），把下面两行取消注释即可：
+          # - id: paper-tools
+          #   name: paper-mode-dsh-plugin
+
+          # ── 跑脚本 / 读写文件 / 检索 ──
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+
+          # ── 核验引用/检测机制/投稿政策（技能明确依赖 web_search / web_fetch）──
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+
+          # ── 角色 A–E：独立上下文子代理（技能的核心机制）──
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+                  backgroundMode: continuable
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+                  backgroundMode: continuable
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+
+          # ── 交互、进度与交付物卡片 ──
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+
+          # ── 长文档上下文压缩（论文正文往往很长）──
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024

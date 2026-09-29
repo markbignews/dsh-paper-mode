@@ -43,6 +43,32 @@ $ dsh --profile web --dump-config | grep -A2 paper-tools
 均 **ok=true 8/8**。注意 `skill` 侧不受影响：`package.json` 不参与技能发现（技能名取 SKILL.md
 frontmatter 的 `name`），整仓铺进扫描根仍照常被发现。
 
+## 前置 2：0.2.0 agent preset「论文模式」的验收（`presets/paper.patch.yml`）
+
+0.2.0 的 preset 是一条 `@deepseek-ai/dsh-agent-preset` 声明，`config.plugins` 是**完整**子插件列表；
+它随根 bundle 的第二个 patch 装载。验收方式：用一个只读探针插件读 `agentPresets.list()`、
+`compositionInventory()`，并对 preset 作用域调 `skills.list({ scope })`：
+
+| 组合形态 | `agentPresets.list()` | preset 作用域技能 |
+|---|---|---|
+| `dsh-base`（宿主 skill 行启用） | `[{id: paper, broken: null}]`，composition 21 行全启用 | `['paper-mode']` |
+| 桌面版/Web 等价形态（宿主 `skill-filesystem`、`tool-skill` 置 `disabled`） | `[{id: paper, broken: null}]` | `['paper-mode']` |
+
+踩过并修掉的坑（都由探针/复核抓出，非猜测）：
+
+1. **`paper-tools` 不能在 preset 里重复挂载**：根 bundle 已在宿主层 insert，工具层按
+   `global ∪ scope 链` 合并，preset 内再挂会报 `paper-tools (paper-mode-dsh-plugin): never started`。
+2. **preset 必须自己挂 `skill-filesystem`**：`dsh-web-app` 在宿主层把该行设为 `disabled`
+   （官方注释 "presets own local discovery"），官方 standard/ptc/cordis 三个 preset 也都各自挂。
+   反例实测（只在 `/tmp` 副本上删掉该行、桌面等价组合）：preset 作用域 `skills=[]`；
+   真仓库版本为 `['paper-mode']` —— 缺它则 `skill` 工具报 `unknown or no longer available`，
+   persona 里"先加载 paper-mode 技能"的指令失效。
+3. **必填 config**：`tool-fs-search.sampleOverCapGlobResults`、`tool-todo.allowParallelInProgress`
+   等必填项已齐；`tool-workspace-dependencies` 因 `source` 必填且与论文流程无关而移除。
+4. **宿主前提**：`tool-subagent` 的 `modelSelectionSettings: true` 需要宿主层
+   `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（`dsh-web-app` 提供）。只有 `dsh-base`
+   的最小组合会因此带 broken 诊断；桌面版/Web 不受影响。
+
 
 ## 0. 需要先修的问题（适配前的基线）
 
