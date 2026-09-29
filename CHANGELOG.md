@@ -4,6 +4,26 @@
 
 > 角色命名以 2.4.0 为最终口径（A 初审 → B 引述核查 → C 查重自查 → D AI 率检测 → E 改后终审）；历史版本中的字母编号仅用于追溯，不再沿用。
 
+## 2.7.0+DSH-0.2.0 — 适配 DSH 0.2.0-rc.2（插件重写 + 文档按 0.2.0 事实校正）
+
+> 三份 SKILL.md 的 frontmatter `version` **保持 2.7.0 不变**（`scripts/check_sync.py` 要求三平台 version 同值，本次只有 DSH 版仓库可改，故用本轮标记而不抬 version）；`references/`、`docs/`、`scripts/` 未改动，三平台同源门禁仍 PASS。
+
+- **插件按 0.2.0 契约重写** `plugin/paper-mode-dsh-plugin/lib/index.js`：
+  - 执行路径由 0.1.x 的 `ctx.shell.run(spec)` 改为 0.2.0 的 `ctx.shell.execute(ctx.shell.resolve(req))` + `await handle.result()`（`ShellRunResult`），并保留 `run()` 特性探测分支用于 0.1.x 尽力兼容（0.1.5 实测受该环境自身 sharp 签名问题阻断，未验证）。
+  - `inject` 保持最小硬依赖 `['tools']`：`shell`/`sandboxPolicy` 在执行期用 `ctx.get` 取并按调用兜底报错——这样在尚未挂 bash/sandbox 的组合里插件仍会加载、8 个工具仍注册（缺服务时执行期给出明确错误）；若把它们写进 `inject`，缺任一服务时整条插件行会一直 pending、工具全部消失。
+  - 站立沙箱策略按 0.2.0 语义解析：仅当执行器声明 confining（`shell.sandboxMode` 存在）时传 `sandboxPolicy`，且**无真实 Session 时只做 agentless 解析**——0.2.0 的实现要读 `session.header.cwd`/`session.id`，传任意形态会抛 `session.snapshotEvents is not a function`；另新增 `result.aborted` 标记行。
+  - 脚本目录探测对齐 0.2.0 技能扫描根（`<dshHome>/skills`、`<agentsHome>/skills`、`~/.dsh/skills`、`~/.agents/skills`），并新增**项目级根探测**（从进程 cwd 向上找 `<projectRoot>/.dsh/skills`、`<projectRoot>/.agents/skills`，对应 README 推荐的项目级安装），保留 0.1.x `.agent-presets` 旧布局探测（标注为兼容路径）；找不到脚本时报错列出全部已尝试候选。
+  - Python 解释器优先级改为：`config.pythonCmd` → 随 DSH 运行时捆绑的 `…/runtime/primary-runtime/dependencies/python/bin/python3`（桌面版自带，含 python-docx/pptx/openpyxl/Pillow）→ PATH 上的 `python3`（Windows `python`）。
+  - `paper_pdf_to_images` 自动追加 `-Xcc -fmodules-cache-path=<会话工作区>/.paper-mode-swift-cache`（无工作区身份时退回本机临时目录同名子目录）：沙箱下 clang 默认模块缓存目录常被拒写，且缓存路径冲突会导致 `module '_DarwinFoundation1' is defined in both …` 编译失败；改指唯一可写目录后正常出图（本机实测 1600×2264 PNG，558,986 B）。
+- **SKILL.md 按 0.2.0 事实校正**（只改 DSH 版正文表述，不动 frontmatter version / 角色锚点 / 控制条款）：
+  - 删除"本环境无原生文件附件（附件仅支持图片）"：0.2.0 原生支持**任意类型文件附件**，通用文件为内容寻址只读对象（`<DSH_HOME>/attachments/v1/files/<摘要前缀>/<摘要>/<文件名>`），模型收到一行句柄文本，用 `read`/脚本按该路径读取。
+  - 删除对 `dsh-file-upload` 插件、`.dsh-uploads/<sessionId>/` 目录与 `read_document` 工具的依赖：0.2.0 运行时**均不存在**（社区机制，非官方；该插件 peer 依赖亦与 0.2.0 不匹配）。
+  - `read_image` 补"需当前会话模型声明图片输入"的条件（0.2.0 有路由门禁）。
+  - walioffice 引用改为"第三方、非官方、0.2.0 peer 不匹配"，工具名更正为 `doc_generate`/`sheet_generate`/`ppt_generate`。
+  - frontmatter `metadata` 增 `dshCompatibility: dsh-0.2.0-rc.2`（0.2.0 解析 metadata；未知字段安全）。
+- **README 增「与 DSH 0.2.0-rc.2 的核对清单」**，并修正：`.agent-presets` 旧预设布局在 0.2.0 已不被读取；"目录名须等于 frontmatter name"的结论错误（0.2.0 只取 frontmatter name）；桌面版 profile 只能由桌面版插件管理器/carrier CLI 操作；安装插件必须指向 `plugin/paper-mode-dsh-plugin/` 子目录（仓库根不是 bundle，误装只会成普通依赖且不生效）；角色编号与 SKILL.md 统一（A 初审→B 引述→C 查重→D 检测→E 终审，统一轮）。
+- **验收证据**：`plugin/paper-mode-dsh-plugin/verify-dsh-0.2.0.md` 记录了可复现的验收流程与**严格判定**结果（注册 + 不抛错 + render 成功 + 无信号杀死/超时/沙箱拒绝 + 退出码符合声明 + 关键产物为本轮新产出 + 保真差异计数 > 0），并附负例自检（弱样例必须 FAIL）与 `harnessSha256` 回溯字段——在真实 DSH 0.2.0-rc.2 组合里 8 个 `paper_*` 工具全部执行成功（含 `paper_pdf_to_images` 真实出图 1600×2264），最小组合、桌面版等价组合、项目级安装三种场景均通过。文件另附独立复核补记（复核者自建 profile 复现 8/8，并发现、促成本条的基线证据、`inject` 理由、`pdf_to_text` 退出码、swift 缓存路径，以及 harness 两条假 PASS 通道共六处更正）。
+
 ## 2.7.0 — 省 token 大瘦身 + 统一轮（查重&AIGC 检测并出报告后一次统一改写）
 
 - 三份 SKILL.md frontmatter `version` 升至 **2.7.0**；docs 同步。

@@ -9,8 +9,9 @@
 > 1. **非官方项目**：本仓库是社区独立实现，与杭州深度求索（DeepSeek）及 deepseek-ai 官方团队无隶属、背书或合作关系。
 > 2. **估算 ≠ 官方结果**：输出为基于知网 CNKI AIGC 检测**语言特征**的估算，不是知网/维普/Turnitin 官方检测结果；官方检测才是最终标准，每次估算必须附带此声明。
 > 3. **仅用于合规自查**：作者在投稿/查重前对 AI 辅助内容做自查与人工润色；不得用于规避学校或期刊的官方检测、掩盖代写、伪造数据。改写不得编造数据、实验、案例与引用。
-> 4. **仅适配 DeepSeek Harness**：本版正文依赖 DSH 运行机制（会话技能加载、`subagent` 子代理、会话工作区文件读写、`web_search`/`web_fetch`、可选的上传插件），仅在 DSH 上开发与测试，**未在其他 agent 工具上测试或验证过**。其他平台请用通用版（cn-thesis 仓库 `generic/paper-mode/`）。
+> 4. **仅适配 DeepSeek Harness**：本版正文依赖 DSH 运行机制（会话技能加载、`subagent` 子代理、原生文件附件与工作区文件读写、`web_search`/`web_fetch`），仅在 DSH 上开发与测试，**未在其他 agent 工具上测试或验证过**。其他平台请用通用版（cn-thesis 仓库 `generic/paper-mode/`）。
 > 5. 安装/格式细节以 DeepSeek Harness 官方文档为准（见文末[官方依据](#官方依据)）。
+> 6. **版本适配状态**：技能包与随附插件已按 **DSH 0.2.0-rc.2** 核对并实测（见「与 DSH 0.2.0-rc.2 的核对清单」）。插件对 0.1.x 保留了尽力而为的兼容分支，但**未在 0.1.5 环境实测通过**（本机 0.1.5 命令行因其自身 sharp 原生模块签名问题无法启动，与本仓库无关）。
 
 
 ## 术语澄清：技能 / 插件 / 预设 / Harness（先读，避免误称）
@@ -18,9 +19,9 @@
 | 术语 | 含义 | 与本仓库的关系 |
 |---|---|---|
 | **DeepSeek Harness（dsh）** | 宿主运行框架：基于 Cordis 的进程/服务组合；本技能运行于其中 | 载体（harness），不是本仓库 |
-| **插件（plugin / bundle）** | 注册服务/事件/工具的可装载 Cordis 包（如 `dsh-file-upload`、`walioffice-dsh-plugin`，用 `dsh plugin --profile <name> add` 装进 profile） | ✅ **随附官方形态插件**：`plugin/paper-mode-dsh-plugin/` 是一个 profile bundle（`package.json` 声明 `dsh.bundle.patch`，`cordis.patch.yml` insert 一行），装进 profile 后在**宿主全局工具层**注册 8 个真实模型工具（`paper_ai_signal` 等），出现在官方插件清单，可用 `dsh plugin --profile <name> remove` 回退 |
-| **技能（skill）** | `SKILL.md` + 资源目录（references/scripts/samples）的资产；由 dsh 内的 `dsh-skill-filesystem` 插件按扫描根发现，模型按需加载正文 | ✅ **本仓库主体就是这个**（skill bundle；安装目录名须为 `paper-mode`） |
-| **Agent 预设（preset）** | `~/.dsh/.agent-presets/<id>/agent.cordis.yml`：一份按会话组装的 Cordis 组合（引用官方插件行 + persona + 捆绑技能目录） | ✅ 本机"论文模式"预设捆绑本技能（组合文件属本机配置）；技能里的 `scripts/` 同时是上方插件的脚本资产来源 |
+| **插件（plugin / bundle）** | 注册服务/事件/工具的可装载 Cordis 包，用 `dsh plugin --profile <name> add` 装进 profile。例：社区插件 `dsh-file-upload`、`walioffice-dsh-plugin`——**均非官方、未验证**，其 peer 依赖钉在 `0.1.x`，在 0.2.0 上会被插件兼容闸门拦下，需对**精确版本**做豁免（`dsh plugin --profile <p> allow-version <pkg@ver> --dsh-version <0.2.0-rc.2> --accept-risk`）并自担风险 | ✅ **随附官方形态插件**：`plugin/paper-mode-dsh-plugin/` 是一个 profile bundle（`package.json` 声明 `dsh.bundle.patch`，`cordis.patch.yml` insert 一行），装进 profile 后在**宿主全局工具层**注册 8 个真实模型工具（`paper_ai_signal` 等），出现在官方插件清单，可用 `dsh plugin --profile <name> remove` 回退 |
+| **技能（skill）** | `SKILL.md` + 资源目录（references/scripts/samples）的资产；由 dsh 内的 `dsh-skill-filesystem` 插件按扫描根发现，模型按需加载正文 | ✅ **本仓库主体就是这个**（skill bundle）。**DSH 以 frontmatter `name` 解析技能名，与目录名无关**（0.2.0 无"目录名须等于 name"的校验）；目录名建议仍用 `paper-mode`，因为该名字才是 `/paper-mode` 的调用名 |
+| **Agent 预设（preset）** | 0.2.0 起在 profile 组合 YAML 中用 `@deepseek-ai/dsh-agent-preset`（`config.id` + `config.plugins` 声明行）声明，配 `@deepseek-ai/dsh-agent-preset-registry` 定默认；旧布局 `~/.dsh/.agent-presets/<id>/agent.cordis.yml` 已**不再被读取**（0.2.0 官方技能原文：*Nothing reads that directory any more*） | 本机"论文模式"预设属 0.1.x 旧布局，在 0.2.0 需迁移成组合声明行（步骤见官方 `dsh-agent-preset` 的 `editing-cordis-compositions` 技能）；技能里的 `scripts/` 同时是上方插件的脚本资产来源 |
 | **脚本工具箱** | `scripts/` 下八个 python/swift 脚本 | 附带资产（三平台同源）；插件不复制脚本，运行时探测已安装技能的 scripts 目录 |
 
 一句话：**本仓库 = DeepSeek Harness 的技能包（skill bundle）+ 官方形态插件 `plugin/paper-mode-dsh-plugin/`（profile bundle）**：前者让模型按需加载方法论，后者经 `dsh plugin`/profile bundles 装进宿主、把 8 个脚本封装成全局可调的原生工具（脚本本体仍随技能三平台同源，不复制进插件包）；对 WorkBuddy / Codex / Claude Code 则是同一技能装进各自技能目录的本地版本。以往资料中"DSH 插件版本"的说法不准确，统一以"DSH 版技能包（+ profile bundle 插件）"为准。
@@ -37,9 +38,23 @@
 | 精确导出 | 定稿文本**逐字**装回 `.docx`（数字/术语/公式/引号保留，支持 `#` 标题与 `**加粗**`） | `scripts/docx_write.py` |
 | 原生工具层 | 8 个带 schema 的模型工具（`paper_ai_signal` / `paper_office_extract` / `paper_docx_extract` / `paper_docx_write` / `paper_pdf_to_text` / `paper_pdf_to_images` / `paper_faith_check` / `paper_check_sync`），走会话沙箱执行脚本 | `plugin/paper-mode-dsh-plugin/`（profile bundle，见下） |
 
+## 与 DSH 0.2.0-rc.2 的核对清单
+
+本仓库引用的宿主机制已逐条对照 **DSH 0.2.0-rc.2** 运行时源码与本机实测核对（"仅适配 DSH"的承诺以本清单为准）：
+
+| 机制 | 0.2.0 事实 | 与本仓库的关系 |
+|---|---|---|
+| 原生文件附件 | 0.2.0 内置 `dsh-attachment-local` + `dsh-client-file-upload` + `dsh-client-ui-attachment`，**任意类型文件**（无类型白名单）；通用文件存为内容寻址只读对象：对象在 `<DSH_HOME>/attachments/v1/file-objects/<摘要前缀>/<摘要>`，引用路径 `<DSH_HOME>/attachments/v1/files/<摘要前缀>/<摘要>/<文件名>`，模型收到一行**句柄文本**（文件名/字节数/摘要前缀/只读路径） | SKILL.md 与本文据此改写了"输入"说明；**不再**声称"本环境无原生附件" |
+| `read_document` / `.dsh-uploads/` / `dsh-file-upload` | 0.2.0 运行时**均不存在**（`read_document`、`.dsh-uploads` 全树 0 命中）；它们是社区插件的机制，不是 DSH 官方机制 | SKILL.md 已删除对该工具与目录的依赖，改为按句柄路径用 `read` + 本仓库脚本 |
+| `subagent` / `read_image` / `web_search` / `web_fetch` / `present` / `todo_write` / `workflow` | 0.2.0 均存在且同名；`read_image` 有路由门禁——模型未声明图片输入即报错 | 技能正文的工具名无需更名；已为 `read_image` 补上"需模型声明图片输入"的条件说明 |
+| 技能扫描根与优先级 | rank 100 `<projectRoot>/.dsh/skills`、200 `<projectRoot>/.agents/skills`、300 `customSkillDirs`、400 `<dshHome>/skills`、500 `<agentsHome>/skills` | README「发现根目录与优先级」与 0.2.0 常量逐一相符，无需改动 |
+| 技能 frontmatter | 解析 `name`/`description`/`whenToUse`/`metadata`；`version` **不解析**（纯人读字段，未知字段静默忽略）；camelCase 旧键（`userInvocable` 等）会被拒绝 | 本技能 frontmatter 合法；`version` 仍用于三平台同源门禁（`check_sync.py`），请勿删除 |
+| 8 个原生工具的执行路径 | 0.2.0 的 `ctx.shell` 为 `resolve()` + `execute()`（结果在 `await handle.result()`）；`ctx.sandboxPolicy.resolve({ session })` 给每调用策略 | `plugin/paper-mode-dsh-plugin/` 已按此改写（含 0.1.x `run()` 兼容分支），实测 8 个工具全部成功执行 |
+| `--dump-config` / `dsh plugin … add` / `dsh.bundle.patch` | 0.2.0 仍然支持；本地目录 bundle 经 `dsh plugin --profile <p> add ./plugin/paper-mode-dsh-plugin` 生效 | 安装步骤有效，但桌面版 profile 只能用桌面版插件管理器/carrier CLI 操作（见下） |
+
 ## 安装
 
-本仓库是一个 DSH skill 目录 bundle（`<name>/SKILL.md` 结构），安装即把仓库克隆到 DSH 的某个技能扫描根目录下，**目录名必须是 `paper-mode`**（DSH 按目录名解析候选 skill，frontmatter `name` 须与之匹配）。
+本仓库是一个 DSH skill 目录 bundle（`<name>/SKILL.md` 结构），安装即把仓库克隆到 DSH 的某个技能扫描根目录下，**目录名建议用 `paper-mode`**：DSH 0.2.0 以 frontmatter `name` 解析技能名，目录名不同**不会**被拒绝，但 `paper-mode` 这个名字同时是 `/paper-mode` 的调用名，保持一致最省事。
 
 ```bash
 # 推荐：用户级安装（dshHome 默认 ~/.dsh，rank 400）
@@ -52,7 +67,7 @@ git clone https://github.com/markbignews/dsh-paper-mode <projectRoot>/.dsh/skill
 ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 ```
 
-> 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。不要直接把仓库内容铺进扫描根目录（会因目录名 `dsh-paper-mode` 与 frontmatter `name: paper-mode` 不一致而被拒绝）。
+> 若设置了 `$DSH_HOME`/`$DSH_AGENTS_HOME`，请替换为对应目录。**根目录本身不是 bundle**（`package.json` 在 `plugin/paper-mode-dsh-plugin/` 里），所以整仓铺进扫描根时技能（`SKILL.md`）仍被正常发现，但下面那步安装插件必须指向 `plugin/paper-mode-dsh-plugin/` 子目录。
 
 ### 可选：把 8 个脚本升级为官方原生工具（profile bundle 插件）
 
@@ -61,17 +76,28 @@ ls ~/.dsh/skills/paper-mode/SKILL.md   # 验证安装
 ```bash
 # 1) 技能/脚本资产先就位（插件运行时探测 scripts 目录）
 #    a) 克隆技能：  git clone https://github.com/markbignews/dsh-paper-mode ~/.dsh/skills/paper-mode
-#    b) 或已有"论文模式"预设（预设技能目录 ~/.dsh/.agent-presets/<预设>/skills/paper-mode/scripts 亦可被探测）
-# 2) 本地安装 bundle（本仓库目录内执行；等价 dsh plugin --profile <name> add）
+#    b) 0.1.x 的"论文模式"预设技能目录（~/.dsh/.agent-presets/<预设>/skills/paper-mode/scripts）仍会被探测，
+#       但该预设布局在 0.2.0 已不再被读取，请优先用 a)
+# 2) 安装 bundle —— 注意目标必须是 plugin/paper-mode-dsh-plugin/ 子目录，不是仓库根
 cd dsh-paper-mode
+#    Web 版（dsh web / 浏览器版 profile）：
 dsh plugin --profile web add ./plugin/paper-mode-dsh-plugin
-# 3) 重启 dsh web（profile bundle 在启动时装载，须重启生效）
+#    桌面版（DeepSeek Harness Desktop）：用 shell 里的 dsh 操作 `desktop` profile 会被拒绝
+#    （该 profile 由 Electron 应用独占）。请在应用内「设置 → 插件」安装本地目录，
+#    或完全退出桌面版后用桌面版自带的 carrier CLI 执行同一 add 命令；且 dsh 版本须与宿主一致。
+# 3) 重启宿主（profile bundle 在启动时装载，须重启生效）
 ```
+
+> ⚠️ 仓库根目录没有 `package.json`：把**仓库根**传给 `add` 时，依赖会被加进 profile，但随后
+> 解析 bundle 直接抛错、命令以非 0 退出（本机复现：`Error: dsh: cannot resolve profile bundle
+> "dsh-paper-mode"`，CLI exit 1；再次执行才回到 exit 0），**不会**注册成 profile bundle
+> （`dsh.profile.bundles` 里没有它，插件也不生效）。务必指向 `./plugin/paper-mode-dsh-plugin`。
 
 - 插件包结构遵循官方 bundle 约定：`package.json` 声明 `dsh.bundle.patch: ./cordis.patch.yml`，patch `insert` 一行 `name: paper-mode-dsh-plugin`——出现在**官方插件清单**，可用 `dsh plugin --profile web remove paper-mode-dsh-plugin` 回退。
 - 工具注册在**宿主全局工具层**：任何模式（标准/论文模式等）的会话都能调用这 8 个工具（对论文模式会话最有用；非论文任务可忽略）。
-- 包**不复制脚本**（脚本是三平台同源资产，真源在技能 `scripts/`）：apply 时按 `$DSH_HOME`/`~/.dsh` 下的技能扫描根与 `.agent-presets` 预设目录自动探测 `ai_signal.py` 所在目录，找不到时工具仍注册、执行期报错并给出指引；也可在组合行 `config.scriptsDir` 显式指定。
-- 插件零 `@deepseek-ai` 依赖（只 import Node 内置模块），工具执行经 `ctx.shell` + 会话站立沙箱策略，与 `tool-bash` 同一边界。Windows 下 python 解释器自动取 `python`（可用 `config.pythonCmd` 覆盖），`paper_pdf_to_images` 仅 macOS。
+- 包**不复制脚本**（脚本是三平台同源资产，真源在技能 `scripts/`）：apply 时按技能扫描根（`<dshHome>/skills`、`<agentsHome>/skills`、`~/.dsh/skills`、`~/.agents/skills`）+ **项目级根**（从进程 cwd 向上找 `<projectRoot>/.dsh/skills`、`<projectRoot>/.agents/skills`）自动探测 `ai_signal.py` 所在目录，另保留 0.1.x 的 `.agent-presets` 旧布局探测（0.2.0 已不读取该目录，仅作兼容）；找不到时工具仍注册、执行期报错并给出全部已尝试候选路径；也可在组合行 `config.scriptsDir` 显式指定。
+- 插件只硬依赖 `tools`（`inject: ['tools']`）：`shell`/`sandboxPolicy` 在执行期取用并按调用兜底报错，所以在缺 bash/沙箱服务的组合里插件仍加载、8 个工具仍注册，只是执行期报明确错误。
+- 插件零 `@deepseek-ai` 依赖（只 import Node 内置模块），工具执行经 `ctx.shell` + 会话站立沙箱策略，与 `tool-bash` 同一边界。Python 解释器优先取随 DSH 运行时捆绑的解释器（`…/runtime/primary-runtime/dependencies/python/bin/python3`，桌面版自带、含 python-docx/pptx/openpyxl/Pillow），其次才是 PATH 上的 `python3`（Windows 为 `python`）；可用 `config.pythonCmd` 覆盖。`paper_pdf_to_images` 仅 macOS，且已自动把 Swift 模块缓存指到工作区内可写目录（沙箱下默认缓存目录常被拒写）。
 
 
 ### Windows 用户说明
@@ -106,14 +132,14 @@ DSH 官方监视行为：`SKILL.md` 正文与 frontmatter 的修改在**下一�
 
 - **模型侧**：直接说需求即可触发（description 匹配），例如"检查这篇论文的 AI 率"、"把 AI 率降到 10% 以下"、"这段改得不像 AI 写的"。
 - **用户侧**：`/paper-mode`（`user-invocable` 默认开启）。
-- **输入**：粘贴文本；或把文档放进**会话工作区**以 `@路径` 引用（本环境无原生文件附件）；若 DSH profile 装有社区上传插件 `dsh-file-upload`，拖入/上传的文档落在 `.dsh-uploads/<sessionId>/`，可用其 `read_document` 工具直接读取。
-- **执行闭环**（详见 `SKILL.md`）：引述可靠性核查（角色A 子代理，先行并向用户同步）→ AI 率检测（角色B 全新子代理独立估算）→ 逐段修改意见（确认后才改）→ 复查循环（每轮由新角色B 重测）→ `docx_write.py` 精确保留导出。检测阶段依赖 DSH 的 `subagent`（全新上下文）与 `web_search` 机制，这是 DSH 版与通用版的本质差别。
+- **输入**：粘贴文本；或**直接把文件拖入/上传**——DSH 0.2.0 原生支持任意类型文件附件（无类型白名单），宿主给出只读保存路径（通用文件在 `<DSH_HOME>/attachments/v1/files/<摘要前缀>/<摘要>/<文件名>`），用 `read` 或本技能脚本读取；也可把文档放进**会话工作区**以 `@路径` 引用。**本环境没有** `read_document` 这类文档转 Markdown/OCR 的宿主工具；社区插件 `dsh-file-upload` 另提供 `.dsh-uploads/<sessionId>/` 与 `read_document`，但那是第三方机制、**非官方**，且其 peer 依赖与 0.2.0 不匹配。
+- **执行闭环**（详见 `SKILL.md`，角色序以 2.4.0 为最终口径）：论文初审（角色A 全新子代理，❌ 即退出）→ 引述可靠性核查（角色B，先行并向用户同步）→ 查重自查（角色C）/ AI 率检测（角色D）**只查不改、并出报告** → 统一修改意见（确认后才改）→ **一次统一改写** → 并行复查（新角色C ∥ 新角色D 重测同一稿）→ 终审（角色E）→ `docx_write.py` 精确保留导出。检测阶段依赖 DSH 的 `subagent`（全新上下文）与 `web_search`/`web_fetch` 机制，这是 DSH 版与通用版的本质差别。
 
 ## 目录结构
 
 ```
 dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
-├── SKILL.md                       # 技能正文（frontmatter: name/description/whenToUse/metadata + DSH 指令）
+├── SKILL.md                       # 技能正文（frontmatter: name/description/whenToUse/metadata；version 仅供人读，DSH 不解析）
 ├── references/
 │   ├── aigc_signals_zh.md         # 信号库 v2：判定与改写的唯一依据
 │   └── duplicate_check_zh.md      # 查重参考库：机制口径/报告指标/降重策略/与降 AI 率协同（估算非官方）
@@ -129,10 +155,14 @@ dsh-paper-mode/                    ← 安装为 <扫描根>/paper-mode/
 ├── samples/                       # 演示样例（sample_ai_style.txt / .docx）
 ├── plugin/
 │   └── paper-mode-dsh-plugin/     # 官方 profile bundle 插件：8 个原生 paper_* 工具（package.json + cordis.patch.yml + lib/index.js）
+│       ├── verify-dsh-0.2.0.md    # 0.2.0 验收记录（可复现步骤 + 实测结果 + 已知限制）
+│       └── verify-dsh-0.2.0.mjs   # 验收用 Cordis 插件（只读验收资产，不随包发布、运行时也不加载）
 ├── docs/
 │   └── thesis_workflow_zh.md      # 闭环流程方法论
 └── README.md / LICENSE / .gitignore   # 仓库级文件（不影响技能发现）
 ```
+
+> **frontmatter 说明（0.2.0）**：DSH 解析 `name`/`description`/`whenToUse`/`metadata`，以及 `user-invocable`/`disable-model-invocation` 调用策略字段；`version` **不被解析**（纯人读，未知字段静默忽略），它只服务于本仓库的三平台同源门禁 `scripts/check_sync.py`。**切勿**使用 camelCase 旧键（`userInvocable`/`modelInvocable`/`disableModelInvocation`）——0.2.0 会直接抛错并忽略整份 `SKILL.md`。
 
 ## 脱离 DSH：命令行直接使用
 

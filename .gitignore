@@ -11,3 +11,7 @@ venv/
 out.txt
 outdir/
 *.log
+
+# 插件给 pdf_to_images.swift 指定的 swift 模块缓存（落在会话工作区或临时目录）
+.paper-mode-swift-cache/
+
